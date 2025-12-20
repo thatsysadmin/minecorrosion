@@ -1,0 +1,11 @@
+[package]
+name = "minecmd"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libminecorrosion = { path = "../libminecorrosion" }
+
+colored = "3.0.0"
+clap = "4.5.53"
+#diesel = { version = "2.3.4", features = ["sqlite", "returning_clauses_for_sqlite3_35"] }
