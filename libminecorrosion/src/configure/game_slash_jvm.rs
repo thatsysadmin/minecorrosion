@@ -26,47 +26,25 @@ pub fn parse_arguments_game_plus_jvm(
             arguments.push(ls);
         }
         else if element.is_object() { // "rule" element
-            let rule_container = match element.get("rules") {
-                None => {
-                    panic!()
-                }
-                Some(x) => {
-                    match x.as_array() {
-                        None => {
-                            panic!()
-                        }
-                        Some(y) => { y }
-                    }
-                }
-            };
+            let rule_container_i = breakpoint_trap_option(element.get("rules"))?;
+            let rule_container = breakpoint_trap_option(rule_container_i.as_array())?;
 
             for rule in rule_container {
                 if process_rule(rule, rules) { // True
-                    let arguments_value = match element.get("value") {
-                        None => {
-                            panic!()
-                        }
-                        Some(x) => { x }
-                    };
-                    match arguments_value {
+                    match breakpoint_trap_option(element.get("value"))? {
                         Value::String(x) => {
-                            let y = lookup_substitution(x.as_str(), &environment_variable);
+                            let y = lookup_substitution(x.as_str(), environment_variable);
                             arguments.push(y);
                         }
                         Value::Array(x) => {
                             for y in x {
-                                let z = match y.as_str() {
-                                    None => {
-                                        panic!()
-                                    }
-                                    Some(b) => { b }
-                                };
-                                let a = lookup_substitution(z, &environment_variable);
+                                let z = breakpoint_trap_option(y.as_str())?;
+                                let a = lookup_substitution(z, environment_variable);
                                 arguments.push(a);
                             }
                         }
                         _ => {
-                            panic!()
+                            return None
                         }
                     }
                 }
@@ -74,8 +52,8 @@ pub fn parse_arguments_game_plus_jvm(
             }
         }
         else {
-            panic!()
+            return None
         }
     } // for element in element_container
-    arguments
+    Some(arguments)
 } // root function

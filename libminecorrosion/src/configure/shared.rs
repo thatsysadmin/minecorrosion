@@ -5,7 +5,7 @@ use serde_json::Value;
 const OPENING_DELINEATOR: &str = "${";
 const CLOSING_DELINEATOR: &str = "}";
 
-pub fn lookup_substitution<'a>(argument: &'a str, environment_variable: &std::collections::HashMap<&str, &'a str>) -> String {
+pub fn lookup_substitution<'a>(argument: &'a str, environment_variable: &std::collections::HashMap<&str, &'a str>) -> Option<String> {
     if argument.contains(OPENING_DELINEATOR) && argument.contains(CLOSING_DELINEATOR) {
         let regex = Regex::new(r"\$\{(.*?)}").unwrap();
         let query = regex.find(argument).unwrap().as_str();
@@ -13,16 +13,11 @@ pub fn lookup_substitution<'a>(argument: &'a str, environment_variable: &std::co
             .replace("$", "")
             .replace("{", "")
             .replace("}", "");
-        let value = match environment_variable.get(stripped.as_str()) {
-            None => {
-                panic!() // TODO: need to throw a result up the chain if it doesn't exist.
-            }
-            Some(x) => { x }
-        };
-        regex.replace(argument, *value).to_string()
+        let value = environment_variable.get(stripped.as_str())?;
+        Some(regex.replace(argument, *value).to_string())
     }
     else {
-        argument.to_string()
+        Some(argument.to_string())
     }
 }
 
