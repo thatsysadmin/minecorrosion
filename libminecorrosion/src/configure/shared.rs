@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use regex::Regex;
 use serde_json::Value;
+use crate::breakpoint_trap_option;
 
 const OPENING_DELINEATOR: &str = "${";
 const CLOSING_DELINEATOR: &str = "}";
@@ -41,7 +42,7 @@ pub fn extract_keys(x: &serde_json::value::Value) -> Vec<String> {
     keys
 }
 
-pub fn process_rule(rule: &serde_json::value::Value, rules: &HashMap<&str, bool>) -> bool {
+pub fn process_rule(rule: &serde_json::value::Value, rules: &HashMap<&str, bool>) -> Option<bool> {
     let action = match rule.get("action") {
         None => {
             panic!()
@@ -61,17 +62,12 @@ pub fn process_rule(rule: &serde_json::value::Value, rules: &HashMap<&str, bool>
                 // Test to see if there's an OS rule instead.
                 let mut rtn = false;
 
-                let os_rule = match rule.get("os") {
-                    None => {
-                        panic!()
-                    }
-                    Some(x) => { x }
-                };
+                let os_rule = breakpoint_trap_option(rule.get("os"))?;
 
                 // seems to be either name or arch.
                 let keys = extract_keys(os_rule);
                 if keys.len() != 1 {
-                    panic!()
+                    return None
                 }
                 let option = &keys[0];
                 if option == "name" { // actually the platform for some reason
@@ -83,7 +79,7 @@ pub fn process_rule(rule: &serde_json::value::Value, rules: &HashMap<&str, bool>
                     rtn = value == arch;
                 }
                 else {
-                    panic!()
+                    return None
                 }
 
                 rtn
@@ -91,7 +87,7 @@ pub fn process_rule(rule: &serde_json::value::Value, rules: &HashMap<&str, bool>
             Some(x) => {
                 let keys = extract_keys(x);
                 if keys.len() != 1 {
-                    panic!()
+                    return None
                 }
                 match rules.get(keys[0].as_str()) {
                     None => {
@@ -101,12 +97,13 @@ pub fn process_rule(rule: &serde_json::value::Value, rules: &HashMap<&str, bool>
                 }
             }
         };
-        features
+        Some(features)
     }
     else if action == "disallow" {
-        false
+        Some(false)
     }
     else {
-        panic!()
+        // panic!()
+        None
     }
 }

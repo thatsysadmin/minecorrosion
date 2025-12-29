@@ -22,7 +22,7 @@ pub fn parse_arguments_game_plus_jvm(
     for element in element_container {
         if element.is_string() {
             let argument = breakpoint_trap_option(element.as_str())?;
-            let ls = lookup_substitution(argument, environment_variable);
+            let ls = breakpoint_trap_option(lookup_substitution(argument, environment_variable))?;
             arguments.push(ls);
         }
         else if element.is_object() { // "rule" element
@@ -30,16 +30,16 @@ pub fn parse_arguments_game_plus_jvm(
             let rule_container = breakpoint_trap_option(rule_container_i.as_array())?;
 
             for rule in rule_container {
-                if process_rule(rule, rules) { // True
+                if breakpoint_trap_option(process_rule(rule, rules))? { // True
                     match breakpoint_trap_option(element.get("value"))? {
                         Value::String(x) => {
-                            let y = lookup_substitution(x.as_str(), environment_variable);
+                            let y = breakpoint_trap_option(lookup_substitution(x.as_str(), environment_variable))?;
                             arguments.push(y);
                         }
                         Value::Array(x) => {
                             for y in x {
                                 let z = breakpoint_trap_option(y.as_str())?;
-                                let a = lookup_substitution(z, environment_variable);
+                                let a = breakpoint_trap_option(lookup_substitution(z, environment_variable))?;
                                 arguments.push(a);
                             }
                         }
