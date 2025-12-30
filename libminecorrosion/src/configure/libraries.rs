@@ -7,6 +7,7 @@ use reqwest::StatusCode;
 use sha1::{Digest, Sha1};
 use colored::Colorize;
 use crate::{breakpoint_trap_option, breakpoint_trap_result};
+use crate::configure::libraries::DownloadLibrariesResult::{Success, SuccessWithIssues};
 use crate::configure::shared::{extract_keys, process_rule};
 
 pub fn get_libraries(configuration: &serde_json::value::Value, os: &str, rules: HashMap<&str, bool>) -> Option<Vec<ArtifactStructure>> {
@@ -53,11 +54,23 @@ pub struct ArtifactStructure {
     pub url: String,
 }
 
-pub async fn download_libraries(client: reqwest::Client, download_list: Vec<ArtifactStructure>, downloadroot_str: &str) -> Option<Vec<(String, bool)>> {
+pub enum DownloadLibrariesResult {
+    Success,
+    SuccessWithIssues(Vec<(String, DownloadLibrariesResultReason)>),
+    Failure,
+}
+
+pub enum DownloadLibrariesResultReason {
+    Success,
+    FailedChecksum,
+    FailedDownload(reqwest::StatusCode)
+}
+
+pub async fn download_libraries(client: reqwest::Client, download_list: Vec<ArtifactStructure>, downloadroot_str: &str) -> DownloadLibrariesResult {
     let mut downloadroot = PathBuf::new();
     downloadroot.push(Path::new(downloadroot_str));
 
-    let mut artifact_status: Vec<(String, bool)> = Vec::new();
+    let mut artifact_status: Vec<(String, DownloadLibrariesResultReason)> = Vec::new();
     let mut successes: usize = 0;
     let download_list_length = download_list.len();
 
@@ -100,8 +113,6 @@ pub async fn download_libraries(client: reqwest::Client, download_list: Vec<Arti
             let result = reqwest.send().await.unwrap();
             let reqwest_code = result.status();
             if reqwest_code == StatusCode::OK {
-                artifact_status.push((artifact.path, true));
-                successes += 1;
                 let body = result.bytes().await.unwrap();
 
                 // Verify the sha1 hash
@@ -110,17 +121,21 @@ pub async fn download_libraries(client: reqwest::Client, download_list: Vec<Arti
                 let hasher_result = &hasher.finalize();
                 let hasher_ascii = format!("{:x}", hasher_result);
                 if hasher_ascii == artifact.sha1 {
+                    successes += 1;
+                    artifact_status.push((artifact.path, DownloadLibrariesResultReason::Success));
                     println!("{}", "Success, passed SHA1 hash check.".bright_green());
                 } else {
+                    artifact_status.push((artifact.path, DownloadLibrariesResultReason::FailedChecksum));
                     println!("{}", "Success, failed SHA1 hash check.".bright_yellow());
                 }
 
                 let mut file_handler = File::create(&absolute_path).unwrap();
                 file_handler.write_all(&body).unwrap();
             } else if reqwest_code == StatusCode::NOT_FOUND {
-                artifact_status.push((artifact.path, false));
+                artifact_status.push((artifact.path, DownloadLibrariesResultReason::FailedDownload(StatusCode::NOT_FOUND)));
                 println!("{}", "Not found.".bright_red());
             } else {
+                artifact_status.push((artifact.path, DownloadLibrariesResultReason::FailedDownload(reqwest_code)));
                 println!("{} {}, panicking.", "Got other status code: ".bright_red(), reqwest_code);
                 panic!()
             }
@@ -129,9 +144,9 @@ pub async fn download_libraries(client: reqwest::Client, download_list: Vec<Arti
 
     println!("Done downloading libraries.");
     if successes == download_list_length {
-        None
+        Success
     }
     else {
-        Some(artifact_status)
+        SuccessWithIssues(artifact_status)
     }
 }
