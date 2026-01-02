@@ -47,6 +47,7 @@ fn parse_artifact(value: &serde_json::value::Value) -> Option<ArtifactStructure>
     })
 }
 
+#[derive(Clone)]
 pub struct ArtifactStructure {
     pub path: String,
     pub sha1: String,
@@ -66,7 +67,7 @@ pub enum DownloadLibrariesResultReason {
     FailedDownload(reqwest::StatusCode)
 }
 
-pub async fn download_libraries(client: reqwest::Client, download_list: Vec<ArtifactStructure>, downloadroot_str: &str) -> DownloadLibrariesResult {
+pub fn download_libraries(client: &reqwest::blocking::Client, download_list: Vec<ArtifactStructure>, downloadroot_str: &str) -> DownloadLibrariesResult {
     let mut downloadroot = PathBuf::new();
     downloadroot.push(Path::new(downloadroot_str));
 
@@ -110,10 +111,10 @@ pub async fn download_libraries(client: reqwest::Client, download_list: Vec<Arti
         if download_file { // Download the file.
             fs::create_dir_all(folder_path).unwrap();
             let reqwest = client.get(artifact.url.as_str());
-            let result = reqwest.send().await.unwrap();
+            let result = reqwest.send().unwrap();
             let reqwest_code = result.status();
             if reqwest_code == StatusCode::OK {
-                let body = result.bytes().await.unwrap();
+                let body = result.bytes().unwrap();
 
                 // Verify the sha1 hash
                 let mut hasher = Sha1::new();

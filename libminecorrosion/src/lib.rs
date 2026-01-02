@@ -3,6 +3,7 @@ pub mod database;
 pub mod launch;
 mod models;
 mod schema;
+mod download_and_verify;
 
 /// breakpoint_trap_option
 pub fn breakpoint_trap_option<T>(call: Option<T>) -> Option<T> {
