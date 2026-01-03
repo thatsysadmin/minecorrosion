@@ -81,7 +81,7 @@ pub fn build_cmdline() {
     let assets_str = str::from_utf8(&*assets_file_handle).unwrap();
     let assets_json: Value = serde_json::from_str(assets_str).unwrap();
     let assets = get_assets(assets_json).unwrap();
-    download_assets(&client, assets);
+    download_assets(&client, assets, Path::new("/Volumes/tmpfs/minecorrosion_libraries/assets"));
 
     // TODO: JVM Arguments
     let jvm_arguments = parse_arguments_game_plus_jvm(&test_config, &environment_variables, &rules);

@@ -119,7 +119,7 @@ pub fn download_libraries(client: &reqwest::blocking::Client, download_list: Vec
                 // Verify the sha1 hash
                 let mut hasher = Sha1::new();
                 hasher.update(&body);
-                let hasher_result = &hasher.finalize();
+                let hasher_result = hasher.finalize();
                 let hasher_ascii = format!("{:x}", hasher_result);
                 if hasher_ascii == artifact.sha1 {
                     successes += 1;
