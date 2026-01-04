@@ -9,7 +9,7 @@ use serde_json::Value;
 use sha1::{Digest, Sha1};
 use crate::{breakpoint_trap_option, breakpoint_trap_result};
 use crate::configure::libraries::DownloadLibrariesResultReason;
-use crate::configure::shared::extract_keys;
+use crate::configure::shared::{extract_keys, verify_file};
 
 pub fn get_assets(container: Value) -> Option<Vec<Asset>> {
     let mut vector: Vec<Asset> = Vec::new();
@@ -59,45 +59,75 @@ pub fn download_assets(
 
         breakpoint_trap_option(fs::create_dir_all(breakpoint_trap_option(download_sane_path.parent())?).ok())?;
         breakpoint_trap_option(fs::create_dir_all(breakpoint_trap_option(download_hash_path.parent())?).ok())?;
+
+        // Check for file before downloading it again
         print!("Getting {} - ", path_str);
-        let reqwest = client.get(url.as_str());
-        let result = reqwest.send().unwrap();
-        let result_code = result.status();
-        if result_code == reqwest::StatusCode::OK {
-            let body = result.bytes().unwrap();
-
-            let mut hasher = Sha1::new();
-            hasher.update(&body);
-            let hasher_result = hasher.finalize();
-            let hasher_ascii = format!("{:x}", hasher_result);
-            if hasher_ascii == asset.hash { // TODO: This might be a security risk, need to look into this?
-                download_results.push((path_str.to_string(), DownloadLibrariesResultReason::Success));
-                println!("{}", "Success, passed SHA1 hash check.".bright_green());
-            }
-            else {
-                download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedChecksum));
-                println!("{}", "Success, failed SHA1 hash check.".bright_yellow());
-                panic!()
-            }
-            let mut file_handler = breakpoint_trap_option(File::create(&download_sane_path).ok())?;
-            breakpoint_trap_option(file_handler.write_all(&body).ok())?;
-
-            // symlink off the sane folder to the hash file structure
-            #[cfg(target_family = "unix")]
-            {
-                let download_sane_path_relative = Path::new("../..").join(&asset.filepath);
-                os::unix::fs::symlink(download_sane_path_relative, download_hash_path).unwrap();
-            }
-            #[cfg(target_family = "windows")]
-            os::windows::fs::symlink_file(download_sane_path, download_hash_path).unwrap();
-        }
-        else if result_code == reqwest::StatusCode::NOT_FOUND {
-            download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedDownload(StatusCode::NOT_FOUND)));
-            panic!()
+        let download_file;
+        if download_sane_path.exists() {
+            download_file = verify_file(&download_sane_path, &asset.hash)?;
         }
         else {
-            download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedDownload(result_code)));
-            panic!()
+            download_file = true;
+        }
+
+        if download_file {
+            let reqwest = client.get(url.as_str());
+            let result = reqwest.send().unwrap();
+            let result_code = result.status();
+            if result_code == reqwest::StatusCode::OK {
+                let body = result.bytes().unwrap();
+
+                let mut hasher = Sha1::new();
+                hasher.update(&body);
+                let hasher_result = hasher.finalize();
+                let hasher_ascii = format!("{:x}", hasher_result);
+                if hasher_ascii == asset.hash { // TODO: This might be a security risk, need to look into this?
+                    download_results.push((path_str.to_string(), DownloadLibrariesResultReason::Success));
+                    println!("{}", "Success, passed SHA1 hash check.".bright_green());
+                }
+                else {
+                    download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedChecksum));
+                    println!("{}", "Success, failed SHA1 hash check.".bright_yellow());
+                    panic!()
+                }
+                let mut file_handler = breakpoint_trap_option(File::create(&download_sane_path).ok())?;
+                breakpoint_trap_option(file_handler.write_all(&body).ok())?;
+
+                // symlink off the sane folder to the hash file structure
+                #[cfg(target_family = "unix")]
+                {
+                    let download_sane_path_relative = Path::new("../..").join(&asset.filepath);
+                    let create_symlink: bool;
+                    if !download_hash_path.exists() {
+                        create_symlink = false;
+                    }
+                    else if !download_hash_path.is_symlink() {
+                        let symlink_hash_path = Path::new(&download_hash_path);
+                        create_symlink = symlink_hash_path != download_sane_path_relative;
+                    }
+                    else {
+                        create_symlink = true;
+                    }
+
+                    if create_symlink {
+                        os::unix::fs::symlink(download_sane_path_relative, download_hash_path).unwrap();
+                    }
+                }
+                #[cfg(target_family = "windows")]
+                {
+                    panic!("FIX THIS."); // TODO: Fix this later.
+                    let download_sane_path_relative = Path::new("..\\..").join(&asset.filepath);
+                    os::windows::fs::symlink_file(download_sane_path_relative, download_hash_path).unwrap();
+                }
+            }
+            else if result_code == reqwest::StatusCode::NOT_FOUND {
+                download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedDownload(StatusCode::NOT_FOUND)));
+                panic!()
+            }
+            else {
+                download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedDownload(result_code)));
+                panic!()
+            }
         }
 
         // println!()

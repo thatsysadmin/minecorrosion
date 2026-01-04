@@ -8,7 +8,7 @@ use sha1::{Digest, Sha1};
 use colored::Colorize;
 use crate::{breakpoint_trap_option, breakpoint_trap_result};
 use crate::configure::libraries::DownloadLibrariesResult::{Success, SuccessWithIssues};
-use crate::configure::shared::{extract_keys, process_rule};
+use crate::configure::shared::{extract_keys, process_rule, verify_file};
 
 pub fn get_libraries(configuration: &serde_json::value::Value, os: &str, rules: HashMap<&str, bool>) -> Option<Vec<ArtifactStructure>> {
     let configuration_vector = breakpoint_trap_option(configuration.as_array())?;
@@ -87,22 +87,9 @@ pub fn download_libraries(client: &reqwest::blocking::Client, download_list: Vec
         let download_file;
 
         // Check to see if we have the file, and if we do, verify it.
-        let file_exists = absolute_path.exists();
-        if file_exists {
-            let file_contents = fs::read(&absolute_path).unwrap();
-            let mut hasher = Sha1::new();
-            hasher.update(&file_contents);
-            let hasher_result = &hasher.finalize();
-            let hasher_ascii = format!("{:x}", hasher_result);
-
-            if hasher_ascii != artifact.sha1 {
-                println!("Fine failed verification, redownloading.");
-                download_file = true;
-            }
-            else {
-                println!("File already downloaded, SHA1 checksum verified.");
-                download_file = false;
-            }
+        if absolute_path.exists() {
+            // TODO: Fix this to not use an unwrap.
+            download_file = verify_file(&absolute_path, &artifact.sha1).unwrap();
         }
         else {
             download_file = true;

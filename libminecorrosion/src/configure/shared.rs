@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 use regex::Regex;
 use serde_json::Value;
+use sha1::{Digest, Sha1};
 use crate::breakpoint_trap_option;
 
 const OPENING_DELINEATOR: &str = "${";
@@ -105,5 +108,22 @@ pub fn process_rule(rule: &serde_json::value::Value, rules: &HashMap<&str, bool>
     else {
         // panic!()
         None
+    }
+}
+
+pub fn verify_file(path: &Path, provided_hash: &str) -> Option<bool> {
+    let file_contents = fs::read(&path).unwrap();
+    let mut hasher = Sha1::new();
+    hasher.update(&file_contents);
+    let hasher_result = &hasher.finalize();
+    let hasher_ascii = format!("{:x}", hasher_result);
+
+    if hasher_ascii == provided_hash {
+        println!("File already downloaded, SHA1 checksum verified.");
+        Some(false)
+    }
+    else {
+        println!("File failed verification, redownloading.");
+        Some(true)
     }
 }
