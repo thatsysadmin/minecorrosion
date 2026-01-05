@@ -8,8 +8,7 @@ use reqwest::StatusCode;
 use serde_json::Value;
 use sha1::{Digest, Sha1};
 use crate::{breakpoint_trap_option, breakpoint_trap_result};
-use crate::configure::libraries::DownloadLibrariesResultReason;
-use crate::configure::shared::{extract_keys, verify_file};
+use crate::configure::shared::{extract_keys, verify_file, DownloadResultReason};
 
 pub fn get_assets(container: Value) -> Option<Vec<Asset>> {
     let mut vector: Vec<Asset> = Vec::new();
@@ -48,7 +47,7 @@ pub fn download_assets(
     let path_sane_layout = download_root.join("sane");
     breakpoint_trap_option(fs::create_dir_all(&path_sane_layout).ok())?;
 
-    let mut download_results: Vec<(String, DownloadLibrariesResultReason)> = Vec::new();
+    let mut download_results: Vec<(String, DownloadResultReason)> = Vec::new();
 
     for asset in container {
         let download_sane_path = path_sane_layout.join(&asset.filepath);
@@ -61,10 +60,10 @@ pub fn download_assets(
         breakpoint_trap_option(fs::create_dir_all(breakpoint_trap_option(download_hash_path.parent())?).ok())?;
 
         // Check for file before downloading it again
-        print!("Getting {} - ", path_str);
+        print!("Getting {} - ", url);
         let download_file;
         if download_sane_path.exists() {
-            download_file = verify_file(&download_sane_path, &asset.hash)?;
+            download_file = verify_file(&download_sane_path, &asset.hash).unwrap();
         }
         else {
             download_file = true;
@@ -82,11 +81,11 @@ pub fn download_assets(
                 let hasher_result = hasher.finalize();
                 let hasher_ascii = format!("{:x}", hasher_result);
                 if hasher_ascii == asset.hash { // TODO: This might be a security risk, need to look into this?
-                    download_results.push((path_str.to_string(), DownloadLibrariesResultReason::Success));
+                    download_results.push((path_str.to_string(), DownloadResultReason::Success));
                     println!("{}", "Success, passed SHA1 hash check.".bright_green());
                 }
                 else {
-                    download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedChecksum));
+                    download_results.push((path_str.to_string(), DownloadResultReason::FailedChecksum));
                     println!("{}", "Success, failed SHA1 hash check.".bright_yellow());
                     panic!()
                 }
@@ -121,11 +120,11 @@ pub fn download_assets(
                 }
             }
             else if result_code == reqwest::StatusCode::NOT_FOUND {
-                download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedDownload(StatusCode::NOT_FOUND)));
+                download_results.push((path_str.to_string(), DownloadResultReason::FailedDownload(StatusCode::NOT_FOUND)));
                 panic!()
             }
             else {
-                download_results.push((path_str.to_string(), DownloadLibrariesResultReason::FailedDownload(result_code)));
+                download_results.push((path_str.to_string(), DownloadResultReason::FailedDownload(result_code)));
                 panic!()
             }
         }

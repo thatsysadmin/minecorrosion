@@ -127,3 +127,15 @@ pub fn verify_file(path: &Path, provided_hash: &str) -> Option<bool> {
         Some(true)
     }
 }
+
+pub enum DownloadResult {
+    Success,
+    SuccessWithIssues(Vec<(String, DownloadResultReason)>),
+    Failure,
+}
+
+pub enum DownloadResultReason {
+    Success,
+    FailedChecksum,
+    FailedDownload(reqwest::StatusCode)
+}
