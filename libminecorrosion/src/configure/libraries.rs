@@ -79,20 +79,28 @@ pub fn download_libraries(
 
         // Check to see if we have the file, and if we do, verify it.
         if absolute_path.exists() {
-            // TODO: Fix this to not use an unwrap.
-            download_file = verify_file(&absolute_path, &artifact.sha1).unwrap();
+            download_file = match verify_file(&absolute_path, &artifact.sha1) {
+                None => { return DownloadResult::Failure }
+                Some(x) => { x }
+            };
         }
         else {
             download_file = true;
         }
 
         if download_file { // Download the file.
-            fs::create_dir_all(folder_path).unwrap();
+            let Ok(_) = fs::create_dir_all(folder_path) else { return DownloadResult::Failure };
             let reqwest = client.get(artifact.url.as_str());
-            let result = reqwest.send().unwrap();
+            let result = match reqwest.send() {
+                Ok(x) => { x }
+                Err(_) => { return DownloadResult::Failure }
+            };
             let reqwest_code = result.status();
             if reqwest_code == StatusCode::OK {
-                let body = result.bytes().unwrap();
+                let body = match result.bytes() {
+                    Ok(x) => x,
+                    Err(_) => { return DownloadResult::Failure }
+                };
 
                 // Verify the sha1 hash
                 let mut hasher = Sha1::new();
@@ -108,8 +116,11 @@ pub fn download_libraries(
                     println!("{}", "Success, failed SHA1 hash check.".bright_yellow());
                 }
 
-                let mut file_handler = File::create(&absolute_path).unwrap();
-                file_handler.write_all(&body).unwrap();
+                let mut file_handler = match File::create(&absolute_path) {
+                    Ok(x) => x,
+                    Err(_) => { return DownloadResult::Failure }
+                };
+                let Ok(_) = file_handler.write_all(&body) else { return DownloadResult::Failure };
             } else if reqwest_code == StatusCode::NOT_FOUND {
                 artifact_status.push((artifact.path, DownloadResultReason::FailedDownload(StatusCode::NOT_FOUND)));
                 println!("{}", "Not found.".bright_red());
