@@ -132,10 +132,11 @@ pub enum DownloadResult {
     Success,
     SuccessWithIssues(Vec<(String, DownloadResultReason)>),
     Failure,
+    FailedPrerequisiteOperation()
 }
 
 pub enum DownloadResultReason {
     Success,
     FailedChecksum,
-    FailedDownload(reqwest::StatusCode)
+    FailedDownload(reqwest::StatusCode),
 }

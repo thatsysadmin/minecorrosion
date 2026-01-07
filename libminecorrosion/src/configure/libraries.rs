@@ -54,7 +54,11 @@ pub struct ArtifactStructure {
     pub url: String,
 }
 
-pub fn download_libraries(client: &reqwest::blocking::Client, download_list: Vec<ArtifactStructure>, downloadroot_str: &str) -> DownloadResult {
+pub fn download_libraries(
+    client: &reqwest::blocking::Client,
+    download_list: Vec<ArtifactStructure>,
+    downloadroot_str: &str
+) -> DownloadResult {
     let mut downloadroot = PathBuf::new();
     downloadroot.push(Path::new(downloadroot_str));
 
