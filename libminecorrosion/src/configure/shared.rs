@@ -17,7 +17,12 @@ pub fn lookup_substitution<'a>(argument: &'a str, environment_variable: &std::co
             .replace("$", "")
             .replace("{", "")
             .replace("}", "");
-        let value = environment_variable.get(stripped.as_str())?;
+        let value = match environment_variable.get(stripped.as_str()) {
+            Some(x) => x,
+            None => {
+                return None;
+            }
+        };
         Some(regex.replace(argument, *value).to_string())
     }
     else {

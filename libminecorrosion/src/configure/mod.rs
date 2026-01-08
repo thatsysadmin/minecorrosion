@@ -43,6 +43,7 @@ pub fn build_cmdline() {
 
     // TODO: Native JNI stuff
     environment_variables.insert("natives_directory", library_root.to_str().unwrap());
+    environment_variables.insert("launcher_name", "minecorrosion");
 
     // TODO: Libraries
     let libraries_json = test_config.get("libraries").unwrap();
@@ -76,18 +77,21 @@ pub fn build_cmdline() {
     // }
 
     // TODO: Get assets
-    let assets_path = Path::new("/Users/h/Library/Application Support/minecraft/assets/indexes/27.json");
-    let assets_file_handle = fs::read(assets_path).unwrap();
-    let assets_str = str::from_utf8(&*assets_file_handle).unwrap();
-    let assets_json: Value = serde_json::from_str(assets_str).unwrap();
-    let assets = get_assets(assets_json).unwrap();
-    download_assets(&client, assets, Path::new("/Volumes/tmpfs/minecorrosion_libraries/assets"));
+    // let assets_path = Path::new("/Users/h/Library/Application Support/minecraft/assets/indexes/27.json");
+    // let assets_file_handle = fs::read(assets_path).unwrap();
+    // let assets_str = str::from_utf8(&*assets_file_handle).unwrap();
+    // let assets_json: Value = serde_json::from_str(assets_str).unwrap();
+    // let assets = get_assets(assets_json).unwrap();
+    // download_assets(&client, assets, Path::new("/Volumes/tmpfs/minecorrosion_libraries/assets"));
 
+    let arguments_element = test_config.get("arguments").unwrap();
     // TODO: JVM Arguments
-    let jvm_arguments = parse_arguments_game_plus_jvm(&test_config, &environment_variables, &rules);
+    let jvm_element = arguments_element.get("jvm").unwrap();
+    let jvm_arguments = parse_arguments_game_plus_jvm(&jvm_element, &environment_variables, &rules).unwrap();
 
     // TODO: Game Arguments
-
+    let game_element = arguments_element.get("game").unwrap();
+    let game_arguments = parse_arguments_game_plus_jvm(&game_element, &environment_variables, &rules).unwrap();
 
     // let x = library_arguments.iter().fold(String::new(), |acc, x| {})
 
