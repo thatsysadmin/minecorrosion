@@ -5,6 +5,7 @@ use crate::schema::*;
 #[diesel(table_name = minecorrosion_settings)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct MineCorrosionSettings {
-    pub id: i32,
-    pub database_version: i32,
+    // pub id: i32,
+    pub key: String,
+    pub value: String,
 }
