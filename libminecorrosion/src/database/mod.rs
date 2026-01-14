@@ -6,7 +6,7 @@ mod shared;
 use rusqlite::Connection;
 use sha1::digest::crypto_common::Key;
 use crate::breakpoint_trap_result;
-use crate::database::build_key_value_table::KeyValue;
+use crate::database::build_key_value_table::KeyValueContainer;
 
 pub enum InitializeDatabaseResult {
 
@@ -20,9 +20,11 @@ pub fn initialize_database(database_path: String) -> Option<String> {
         }
     };
 
-    let user_settings = KeyValue::init(&rusqlite_connection, "user_settings").unwrap();
-
-
+    let user_settings = KeyValueContainer::init(&rusqlite_connection, "user_settings").unwrap();
+    let x = user_settings.get_key("invalidkey");
+    // let x = user_settings.get_all_keys();
+    // let x = user_settings.set_key();
+    let x = user_settings.set_key("testkey", "testvaluetosomethingelse");
     panic!()
 }
 

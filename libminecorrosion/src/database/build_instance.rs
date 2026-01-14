@@ -5,9 +5,10 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub fn create_instance(instance_name_z: &String) {
+    pub fn create_instance(instance_name_z: &String) -> Self {
         let instance_name = format!("instance:{}", instance_name_z);
-        
+
+
         let keys = [
             "table_version",
             "table_version",
@@ -24,8 +25,10 @@ impl Instance {
             "cmdline_arguments",
         ];
         for key in keys {
-            
+
         }
+
+        panic!()
     }
 
     pub fn get_instance(instance_name: &String) {

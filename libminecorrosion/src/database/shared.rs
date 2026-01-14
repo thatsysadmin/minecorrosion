@@ -1,6 +1,10 @@
 
 
-pub fn sanitize(string: String) -> String {
+pub fn sanitize(string: &String) -> &String {
     // TODO: WRITE THIS
-    string.replace(":", "\\:")
+    string
+}
+
+pub fn get_boolean() {
+
 }
