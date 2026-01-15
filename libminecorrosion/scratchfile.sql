@@ -5,4 +5,5 @@ insert into 'kv:user_settings' (key, value) values ('testkey3', 'testvalue3');
 select value from "kv:user_settings" where key='testkey1';
 select * from "kv:user_settings";
 insert or replace into "kv:user_settings" values ('testkey3', 'removeit');
-update "kv:user_settings" set value='testvalue3' where key='testkey3'
+update "kv:user_settings" set value='testvalue3' where key='testkey3';
+delete from "kv:user_settings" where key='testkey3';

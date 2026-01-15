@@ -24,7 +24,9 @@ pub fn initialize_database(database_path: String) -> Option<String> {
     let x = user_settings.get_key("invalidkey");
     // let x = user_settings.get_all_keys();
     // let x = user_settings.set_key();
-    let x = user_settings.set_key("testkey", "testvaluetosomethingelse");
+    // let x = user_settings.set_key("testkey", "testvaluetosomethingelse");
+    let x = user_settings.delete_key("testkey3");
+
     panic!()
 }
 

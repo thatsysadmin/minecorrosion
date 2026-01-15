@@ -2,7 +2,7 @@ use std::fmt::format;
 use std::os::macos::raw::stat;
 use rusqlite::{params, Connection, Statement};
 use rusqlite::fallible_streaming_iterator::FallibleStreamingIterator;
-use crate::database::build_key_value_table::KeyValueResult::{NoRowsFound, PreperationFailed, QueryFailed, OK};
+use crate::database::build_key_value_table::KeyValueResult::{KeyReplaced, NewKeyCreated, NoRowsFound, PreperationFailed, QueryFailed, UnknownFailure, OK};
 use crate::database::shared::sanitize;
 
 pub struct KeyValue {
@@ -104,7 +104,7 @@ impl<'a> KeyValueContainer<'a> {
         OK(x)
     }
 
-    pub fn set_key(&self, key: &str, value: &str) -> KeyValueResult<String> {
+    pub fn set_key(&self, key: &str, value: &str) -> KeyValueResult<()> {
         let table_name = &self.table_name;
         let database = self.database;
         let key_exists: bool;
@@ -133,22 +133,55 @@ impl<'a> KeyValueContainer<'a> {
         let mut statement = match database.prepare(&sql_call) {
             Ok(x) => { x }
             Err(_) => {
-                panic!()
+                return PreperationFailed
             }
         };
 
         let result = match statement.execute(params![value, key]) {
             Ok(x) => {x}
             Err(e) => {
-                panic!()
+                return QueryFailed
             }
         };
 
-        panic!()
+        if result == 0 {
+            QueryFailed
+        }
+        else if result == 1 {
+            if key_exists {
+                KeyReplaced
+            }
+            else {
+                NewKeyCreated
+            }
+        }
+        else {
+            UnknownFailure
+        }
     }
 
-    pub fn delete_key(self, key: &str) {
-
+    pub fn delete_key(&self, key: &str) -> KeyValueResult<()> {
+        let mut statement = match self.database.prepare(&format!("DELETE FROM \'{}\' WHERE key=?1", self.table_name)) {
+            Ok(x) => x,
+            Err(e) => {
+                return PreperationFailed
+            }
+        };
+        let result = match statement.execute(params![key]) {
+            Ok(x) => { x }
+            Err(e) => {
+                return QueryFailed
+            }
+        };
+        if result == 0 {
+            QueryFailed
+        }
+        else if result == 1 {
+            OK(())
+        }
+        else {
+            UnknownFailure
+        }
     }
 }
 
