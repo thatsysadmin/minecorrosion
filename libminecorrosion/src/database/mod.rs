@@ -6,6 +6,7 @@ mod shared;
 use rusqlite::Connection;
 use sha1::digest::crypto_common::Key;
 use crate::breakpoint_trap_result;
+use crate::database::build_instance::Instance;
 use crate::database::build_key_value_table::KeyValueContainer;
 
 pub enum InitializeDatabaseResult {
@@ -25,7 +26,8 @@ pub fn initialize_database(database_path: String) -> Option<String> {
     // let x = user_settings.get_all_keys();
     // let x = user_settings.set_key();
     // let x = user_settings.set_key("testkey", "testvaluetosomethingelse");
-    let x = user_settings.delete_key("testkey3");
+    // let x = user_settings.delete_key("testkey3");
+    let x = Instance::create_instance(&rusqlite_connection, "TestMinecraftInstance".to_string());
 
     panic!()
 }
