@@ -1,18 +1,22 @@
 use std::fmt::format;
 use std::os::macos::raw::stat;
-use rusqlite::{params, Connection, Statement};
+use rusqlite::{params, Connection, Error, Statement};
 use rusqlite::fallible_streaming_iterator::FallibleStreamingIterator;
 use rusqlite::ffi::SQLITE_NULL;
-use crate::database::build_key_value_table::KeyValueResult::{KeyReplaced, NewKeyCreated, NoRowsFound, PreperationFailed, QueryFailed, UnknownFailure, OK};
+use crate::database::build_key_value_table::KeyValueResult::{KeyReplaced, NewKeyCreated, NoRowsFound, PreperationFailed, QueryFailed, RowQueryFailure, RowQueryFailureKey, RowQueryFailureValue, UnknownFailure, OK};
 use crate::database::shared::sanitize;
 
 pub struct KeyValue {
-    key: String,
-    value: String,
+    pub key: String,
+    pub value: String,
 }
 
-pub fn init(database: &Connection, table_name: &str) -> KeyValueResult<()> {
-    let table_name_internal = format!("kv:{}", table_name);
+pub struct KeyValueRusqliteResult {
+    pub key: rusqlite::Result<String>,
+    pub value: rusqlite::Result<String>,
+}
+
+pub fn key_value_init(database: &Connection, table_name: &str) -> KeyValueResult<()> {
     let mut table_query = match database.prepare("SELECT EXISTS (SELECT name FROM sqlite_master WHERE type='table' AND name=?1)") {
         Ok(x) => { x }
         Err(_) => {
@@ -20,7 +24,7 @@ pub fn init(database: &Connection, table_name: &str) -> KeyValueResult<()> {
         }
     };
 
-    let table_exists = match table_query.query_row(params![table_name_internal], |row| row.get::<usize, bool>(0)) {
+    let table_exists = match table_query.query_row(params![table_name], |row| row.get::<usize, bool>(0)) {
         Ok(x) => { x }
         Err(_) => {
             return QueryFailed
@@ -28,7 +32,7 @@ pub fn init(database: &Connection, table_name: &str) -> KeyValueResult<()> {
     };
     if !table_exists {
         println!("New database, building out.");
-        let mut build_query = match database.prepare(&format!("CREATE TABLE \'{}\' (key TEXT, value TEXT)", sanitize(&table_name_internal))) {
+        let mut build_query = match database.prepare(&format!("CREATE TABLE \'{}\' (key TEXT, value TEXT)", sanitize(table_name))) {
             Ok(x) => { x }
             Err(_) => {
                 return PreperationFailed
@@ -48,7 +52,7 @@ pub fn init(database: &Connection, table_name: &str) -> KeyValueResult<()> {
     OK(())
 }
 
-pub fn get_key(database: &Connection, table_name: &str, target_key: &str) -> KeyValueResult<String> {
+pub fn key_value_get_key(database: &Connection, table_name: &str, target_key: &str) -> KeyValueResult<String> {
     let mut statement = match database.prepare(&format!("SELECT value FROM \'{}\' WHERE key=?1", table_name)) {
         Ok(x) => x,
         Err(e) => {
@@ -71,7 +75,7 @@ pub fn get_key(database: &Connection, table_name: &str, target_key: &str) -> Key
     OK(result)
 }
 
-pub fn get_all_keys(database: &Connection, table_name: &str) -> KeyValueResult<Vec<KeyValue>> {
+pub fn key_value_get_all_keys(database: &Connection, table_name: &str, search_query: Option<&str>) -> KeyValueResult<Vec<KeyValue>> {
     let mut statement = match database.prepare(&format!("SELECT * FROM \'{}\'", table_name)) {
         Ok(x) => { x }
         Err(e) => {
@@ -79,10 +83,12 @@ pub fn get_all_keys(database: &Connection, table_name: &str) -> KeyValueResult<V
         }
     };
     let statement = match statement.query_map([], |row| {
-        Ok(KeyValue {
-            key: row.get(0).unwrap(),
-            value: row.get(1).unwrap()
-        })
+        Ok(
+            KeyValueRusqliteResult {
+                key: row.get(0),
+                value: row.get(1),
+            }
+        )
     }) {
         Ok(x) => x,
         Err(e) => {
@@ -90,17 +96,52 @@ pub fn get_all_keys(database: &Connection, table_name: &str) -> KeyValueResult<V
         }
     };
     let mut x: Vec<KeyValue> = Vec::new();
-    for y in statement {
-        x.push(y.unwrap());
+    let mut row_index: usize = 0;
+    for (row_index, y) in statement.enumerate() {
+        x.push(
+            match y {
+                Ok(x) => {
+                    let key = match x.key {
+                        Ok(x) => { x }
+                        Err(e) => {
+                            return RowQueryFailureKey(row_index)
+                        }
+                    };
+                    let value = match x.value {
+                        Ok(x) => { x }
+                        Err(e) => {
+                            match e {
+                                Error::InvalidColumnType(_, _, sqlite_type) => {
+                                    if sqlite_type == rusqlite::types::Type::Null {
+                                        "$NOTATHING".to_string()
+                                    }
+                                    else {
+                                        return RowQueryFailureValue(row_index)
+                                    }
+                                }
+                                _ => {
+                                    return RowQueryFailureKey(row_index)
+                                }
+                            }
+                        }
+                    };
+                    KeyValue { key, value }
+                },
+                Err(e) => {
+                    return RowQueryFailure(row_index)
+                }
+            }
+        );
+        // row_index += 1;
     };
     OK(x)
 }
 
-pub fn set_key(database: &Connection, table_name: &str, key: &str, value: Option<&str>) -> KeyValueResult<()> {
+pub fn key_value_set_key(database: &Connection, table_name: &str, key: &str, value: Option<&str>) -> KeyValueResult<()> {
     let table_name = &table_name;
     let database = database;
     let key_exists: bool;
-    match get_key(database, table_name, key) {
+    match key_value_get_key(database, table_name, key) {
         OK(_) => {
             key_exists = true;
         }
@@ -130,7 +171,7 @@ pub fn set_key(database: &Connection, table_name: &str, key: &str, value: Option
     };
 
     let params = match value {
-        None => { params![SQLITE_NULL, key] }
+        None => { params![None::<String>, key] }
         Some(x) => { params![x.to_string(), key] }
     };
     let result = match statement.execute(params) {
@@ -156,7 +197,7 @@ pub fn set_key(database: &Connection, table_name: &str, key: &str, value: Option
     }
 }
 
-pub fn delete_key(database: &Connection, table_name: &str, key: &str) -> KeyValueResult<()> {
+pub fn key_value_delete_key(database: &Connection, table_name: &str, key: &str) -> KeyValueResult<()> {
     let mut statement = match database.prepare(&format!("DELETE FROM \'{}\' WHERE key=?1", table_name)) {
         Ok(x) => x,
         Err(e) => {
@@ -183,10 +224,13 @@ pub fn delete_key(database: &Connection, table_name: &str, key: &str) -> KeyValu
 #[derive(Debug)]
 pub enum KeyValueResult<T> {
     OK(T),
-    KeyReplaced,
-    NewKeyCreated,
+    KeyReplaced, // Only applies to set_key()
+    NewKeyCreated, // Only applies to set_key()
     PreperationFailed,
     QueryFailed,
     NoRowsFound,
+    RowQueryFailure(usize),
+    RowQueryFailureKey(usize),
+    RowQueryFailureValue(usize),
     UnknownFailure
 }

@@ -1,6 +1,6 @@
+use std::collections::HashMap;
 
-
-pub fn sanitize(string: &String) -> &String {
+pub fn sanitize(string: &str) -> &str {
     // TODO: WRITE THIS
     string
 }
