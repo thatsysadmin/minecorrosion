@@ -1,24 +1,36 @@
 use std::collections::HashMap;
+use std::ops::Index;
 use rusqlite::Connection;
-use crate::database::build_instance::BuildInstanceResult::OK;
+use crate::database::build_instance::BuildInstanceResult::{KeyPrefixStripFailed, KeyValueRecallFailed, OK};
 use crate::database::build_key_value_table::{key_value_get_all_keys, key_value_init, key_value_set_key, KeyValue, KeyValueResult};
 
-pub struct Instance {
-    table_version: String,
-    game_version: String,
-    game_directory: String,
-    assets_root: String,
-    assets_index_name: String,
-    version_type: String,
-    resolution_width: String,
-    resolution_height: String,
-    main_class: String,
-    max_heap: String,
-    min_heap: String,
-    cmdline_arguments: String,
+pub struct MCInstance {
+    table_version: Option<String>,
+    game_version: Option<String>,
+    game_directory: Option<String>,
+    assets_root: Option<String>,
+    assets_index_name: Option<String>,
+    version_type: Option<String>,
+    resolution_width: Option<String>,
+    resolution_height: Option<String>,
+    main_class: Option<String>,
+    max_heap: Option<String>,
+    min_heap: Option<String>,
+    cmdline_arguments: Option<String>,
 }
 
-pub fn build_instance_create_instance(database: &Connection, instance_name: String) -> BuildInstanceResult<()> {
+impl<T> Index<usize> for MCInstance<T> {
+    type Output = T;
+    fn index(&self, index: usize) -> &T {
+        match index {
+            n => panic!("index {} is out of bounds", n),
+            
+        }
+    }
+}
+
+/// All parameters of Instance are required.
+pub fn build_instance_create_instance(database: &Connection, instance_name: String, instance: MCInstance) -> BuildInstanceResult<()> {
     let table_name = format!("kv:mcinstance:{}", instance_name);
     match key_value_init(database, &table_name) {
         KeyValueResult::OK(_) => {}
@@ -54,7 +66,7 @@ pub fn build_instance_create_instance(database: &Connection, instance_name: Stri
         "min_heap",
         "cmdline_arguments",
     ];
-    for bare_key in keys {
+    for (index, bare_key) in keys.iter().enumerate() {
         let key = format!("variable:{}", bare_key);
         match key_value_set_key(database, &table_name, &key, None) {
             KeyValueResult::OK(_) => {}
@@ -74,7 +86,7 @@ pub fn build_instance_get_instance<'a>(database: &Connection, instance_name: Str
     let kvs = match key_value_get_all_keys(database, &table_name, None) {
         KeyValueResult::OK(x) => { x }
         (error_result) => {
-            panic!()
+            return KeyValueRecallFailed
         }
     };
 
@@ -82,7 +94,7 @@ pub fn build_instance_get_instance<'a>(database: &Connection, instance_name: Str
     for kv in kvs {
         let key = match kv.key.strip_prefix("variable:") {
             None => {
-                panic!()
+                return KeyPrefixStripFailed
             }
             Some(x) => { x }
         };
@@ -104,7 +116,7 @@ pub fn build_instance_delete_instance(database: &Connection, instance_name: Stri
     panic!()
 }
 
-pub fn build_instance_build_instance_in_kv(database: &Connection, instance_name: String) -> BuildInstanceResult<()> {
+pub fn build_instance_in_kv(database: &Connection, instance_name: String) -> BuildInstanceResult<()> {
     let table_name = format!("kv:mcinstance:{}", instance_name);
 
     panic!()
@@ -113,6 +125,7 @@ pub fn build_instance_build_instance_in_kv(database: &Connection, instance_name:
 #[derive(Debug)]
 pub enum BuildInstanceResult<T> {
     OK(T),
-
+    KeyValueRecallFailed,
+    KeyPrefixStripFailed,
     UnknownFailure
 }
