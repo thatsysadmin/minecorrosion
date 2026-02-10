@@ -3,6 +3,18 @@ name = "libminecorrosion"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "libminecorrosion_fn_downloader"
+path = "./src/downloader/main.rs"
+
+[[bin]]
+name = "libminecorrosion_fn_instance_handler"
+path = "./src/instance_handler/main.rs"
+
+[[bin]]
+name = "libminecorrosion_fn_launch"
+path = "./src/launch/main.rs"
+
 [dependencies]
 toml = "0.9.8"
 serde = "1.0.228"
@@ -16,3 +28,4 @@ colored = "3.0.0"
 #diesel_migrations = { version = "2.3.1", features = ["sqlite"] }
 #diesel-dynamic-schema = { version = "0.2.4", features = ["sqlite"] }
 rusqlite = "0.38.0"
+clap = "4.5.53"
