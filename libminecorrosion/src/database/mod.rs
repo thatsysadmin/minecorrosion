@@ -26,8 +26,8 @@ pub fn initialize_database(database_path: String) -> Option<String> {
     // let x = user_settings.set_key();
     // let x = user_settings.set_key("testkey", "testvaluetosomethingelse");
     // let x = user_settings.delete_key("tetkey3");
-    // let x = build_instance_create_instance(&rusqlite_connection, "TestMinecraftInstance".to_string());
-    let y = build_instance_get_instance(&rusqlite_connection, "TestMinecraftInstance".to_string());
+    let x = build_instance_create_instance(&rusqlite_connection, "TestMinecraftInstance".to_string());
+    // let y = build_instance_get_instance(&rusqlite_connection, "TestMinecraftInstance".to_string());
 
 
     panic!()
