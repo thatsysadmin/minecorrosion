@@ -1,0 +1,18 @@
+[package]
+name = "libminecorrosion"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+toml = "0.9.8"
+serde = "1.0.228"
+serde_json = "1.0.145"
+regex = "1.12.2"
+reqwest = { version = "0.12.24", features = ["blocking"] }
+sha1 = "0.10.6"
+tokio = { version = "1.48.0", features = ["full"] }
+#diesel = { version = "2.3.4", features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
+colored = "3.0.0"
+#diesel_migrations = { version = "2.3.1", features = ["sqlite"] }
+#diesel-dynamic-schema = { version = "0.2.4", features = ["sqlite"] }
+rusqlite = "0.38.0"

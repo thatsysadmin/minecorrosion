@@ -1,0 +1,3 @@
+[workspace]
+members = ["minecmd", "libminecorrosion"]
+resolver = "3"
