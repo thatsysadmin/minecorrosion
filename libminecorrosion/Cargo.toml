@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [[bin]]
+name = "libminecorrosion_fn_configuration_parse"
+path = "./src/configuration_parse/main.rs"
+
+[[bin]]
 name = "libminecorrosion_fn_downloader"
 path = "./src/downloader/main.rs"
 

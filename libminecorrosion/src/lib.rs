@@ -1,6 +1,7 @@
 mod instance_handler;
 mod launch;
 mod downloader;
+mod configuration_parse;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
